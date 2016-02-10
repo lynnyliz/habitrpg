@@ -9,8 +9,8 @@
 @import "../bower_components/select2/select2.css"
 
 // Custom includes
-@import "./global-colors.styl";
-@import "./global-modules.styl";
+@import "./global-colors.styl"
+@import "./global-modules.styl"
 @import "./tasks.styl"
 @import "./avatar.styl"
 @import "./customizer.styl"
@@ -30,6 +30,7 @@
 @import "./footer.styl"
 @import "./menu.styl"
 @import "./options.styl"
+@import "./no-script.styl"
 
 html,body,p,h1,ul,li,table,tr,th,td
   margin: 0
@@ -110,8 +111,10 @@ html, body
 //move
 
 .new-stuff-modal // a .modal-body
-  h5
+  h2, h3
     font-weight: 700
+    font-size: 14px
+    margin-top: 10px
 
 .modal-fixed-height
   overflow-y: auto
@@ -163,6 +166,10 @@ a.label
 .btn-group .btn
   margin-right: 0px
 
+// Class for buttons with long text allowing wrapping
+.btn-wrap
+  white-space: normal
+
 .modal-indented-list
   margin-left: 10px;
   padding-left: 10px;
@@ -187,3 +194,13 @@ a.label
   color: #fff !important
 .line-through
   text-decoration line-through
+
+.markdown-preview markdown code
+  white-space inherit
+
+// By default everything should render as pixelart
+*
+  image-rendering: pixelated
+
+.img-rendering-auto, .img-rendering-auto *, .emoji
+  image-rendering: auto

@@ -1,13 +1,15 @@
 'use strict';
 
 habitrpg.controller('NotificationCtrl',
-  ['$scope', '$rootScope', 'Shared', 'Content', 'User', 'Guide', 'Notification',
-  function ($scope, $rootScope, Shared, Content, User, Guide, Notification) {
+  ['$scope', '$rootScope', 'Shared', 'Content', 'User', 'Guide', 'Notification', 'Analytics',
+  function ($scope, $rootScope, Shared, Content, User, Guide, Notification, Analytics) {
 
     $rootScope.$watch('user.stats.hp', function (after, before) {
       if (after <= 0){
         $rootScope.playSound('Death');
         $rootScope.openModal('death', {keyboard:false, backdrop:'static'});
+      } else if (after <= 30 && !User.user.flags.warnedLowHealth) {
+        $rootScope.openModal('lowHealth', {keyboard:false, backdrop:'static', controller:'UserCtrl', track:'Health Warning'});
       }
       if (after == before) return;
       if (User.user.stats.lvl == 0) return;
@@ -25,11 +27,21 @@ habitrpg.controller('NotificationCtrl',
       $rootScope.playSound('Achievement_Unlocked');
     }, true);
 
+    $rootScope.$watch('user.achievements.challenges.length', function(after, before) {
+      if (after === before) return;
+      if (after > before) {
+        $rootScope.openModal('wonChallenge', {controller: 'UserCtrl', size: 'sm'});
+      }
+    });
+
     $rootScope.$watch('user.stats.gp', function(after, before) {
       if (after == before) return;
       if (User.user.stats.lvl == 0) return;
       var money = after - before;
-      var bonus = User.user._tmp.streakBonus;
+      var bonus;
+      if (User.user._tmp) {
+        bonus = User.user._tmp.streakBonus || 0;
+      }
       Notification.gp(money, bonus || 0);
 
       //Append Bonus
@@ -48,6 +60,28 @@ habitrpg.controller('NotificationCtrl',
        Notification.mp(mana);
     });
 
+    // Levels that already display modals and should not trigger generic Level Up
+    var unlockLevels = {
+      '3': 'drop system',
+      '10': 'class system',
+      '50': 'Orb of Rebirth'
+    }
+
+    $rootScope.$watch('user.stats.lvl', function(after, before) {
+      if (after <= before) return; 
+      Notification.lvl();
+      $rootScope.playSound('Level_Up');
+      if (User.user._tmp && User.user._tmp.drop && (User.user._tmp.drop.type === 'Quest')) return;
+      if (unlockLevels['' + after]) return;
+      if (!User.user.preferences.suppressModals.levelUp) $rootScope.openModal('levelUp', {controller:'UserCtrl', size:'sm'});
+    });
+
+    $rootScope.$watch('!user.flags.classSelected && user.stats.lvl >= 10', function(after, before){
+      if(after){
+        $rootScope.openModal('chooseClass', {controller:'UserCtrl', keyboard:false, backdrop:'static'});
+      }
+    });
+
     $rootScope.$watch('user._tmp.crit', function(after, before){
        if (after == before || !after) return;
        var amount = User.user._tmp.crit * 100 - 100;
@@ -58,99 +92,92 @@ habitrpg.controller('NotificationCtrl',
 
     $rootScope.$watch('user._tmp.drop', function(after, before){
       // won't work when getting the same item twice?
-      if (after == before || !after) return;
-      $rootScope.playSound('Achievement_Unlocked');
-      if (after.type !== 'gear') {
-        var type = (after.type == 'Food') ? 'food' :
-          (after.type == 'HatchingPotion') ? 'hatchingPotions' : // can we use camelcase and remove this line?
-          (after.type.toLowerCase() + 's');
+      if (_.isEqual(after, before) || !after) return;
+      var text, notes, type;
+      $rootScope.playSound('Item_Drop');
+
+      // Note: For Mystery Item gear, after.type will be 'head', 'armor', etc
+      // so we use after.notificationType below.
+
+      if (after.type !== 'gear' && after.type !== 'Quest' && after.notificationType !== 'Mystery') {
+        if (after.type === 'Food') {
+          type = 'food';
+        } else if (after.type === 'HatchingPotion') {
+          type = 'hatchingPotions';
+        } else {
+          type = after.type.toLowerCase() + 's';
+        }
         if(!User.user.items[type][after.key]){
           User.user.items[type][after.key] = 0;
         }
         User.user.items[type][after.key]++;
       }
 
-      if(after.type === 'HatchingPotion'){
-        var text = Content.hatchingPotions[after.key].text();
-        var notes = Content.hatchingPotions[after.key].notes();
-        Notification.drop(env.t('messageDropPotion', {dropText: text, dropNotes: notes}));
-      }else if(after.type === 'Egg'){
-        var text = Content.eggs[after.key].text();
-        var notes = Content.eggs[after.key].notes();
-        Notification.drop(env.t('messageDropEgg', {dropText: text, dropNotes: notes}));
-      }else if(after.type === 'Food'){
-        var text = Content.food[after.key].text();
-        var notes = Content.food[after.key].notes();
-        Notification.drop(env.t('messageDropFood', {dropArticle: after.article, dropText: text, dropNotes: notes}));
-      }else{
+      if (after.type === 'HatchingPotion'){
+        text = Content.hatchingPotions[after.key].text();
+        notes = Content.hatchingPotions[after.key].notes();
+        Notification.drop(env.t('messageDropPotion', {dropText: text, dropNotes: notes}), after);
+      } else if (after.type === 'Egg'){
+        text = Content.eggs[after.key].text();
+        notes = Content.eggs[after.key].notes();
+        Notification.drop(env.t('messageDropEgg', {dropText: text, dropNotes: notes}), after);
+      } else if (after.type === 'Food'){
+        text = Content.food[after.key].text();
+        notes = Content.food[after.key].notes();
+        Notification.drop(env.t('messageDropFood', {dropArticle: after.article, dropText: text, dropNotes: notes}), after);
+      } else if (after.type === 'Quest') {
+        $rootScope.selectedQuest = Content.quests[after.key];
+        $rootScope.openModal('questDrop', {controller:'PartyCtrl',size:'sm'});
+      } else if (after.notificationType === 'Mystery') {
+        text = Content.gear.flat[after.key].text();
+        Notification.drop(env.t('messageDropMysteryItem', {dropText: text}), after);
+      } else {
         // Keep support for another type of drops that might be added
         Notification.drop(User.user._tmp.drop.dialog);
       }
-      $rootScope.playSound('Item_Drop');
+
+      Analytics.track({'hitType':'event','eventCategory':'behavior','eventAction':'acquire item','itemName':after.key,'acquireMethod':'Drop'});
     });
 
     $rootScope.$watch('user.achievements.streak', function(after, before){
-      if(before == undefined || after == before || after < before) return;
-      if (User.user.achievements.streak > 1) {
-        Notification.streak(User.user.achievements.streak);
-        $rootScope.playSound('Achievement_Unlocked');
-      }
-      else {
-        $rootScope.openModal('achievements/streak');
+      if(before == undefined || after <= before) return;
+      Notification.streak(User.user.achievements.streak);
+      $rootScope.playSound('Achievement_Unlocked');
+      if (!User.user.preferences.suppressModals.streak) {
+        $rootScope.openModal('achievements/streak', {controller:'UserCtrl'});
       }
     });
 
-    $rootScope.$watch('user.achievements.ultimateGear', function(after, before){
-      if (after === before || after !== true) return;
-      $rootScope.openModal('achievements/ultimateGear');
+    $rootScope.$watch('user.achievements.ultimateGearSets', function(after, before){
+      if (_.isEqual(after,before) || !_.contains(User.user.achievements.ultimateGearSets, true)) return;
+      $rootScope.openModal('achievements/ultimateGear', {controller:'UserCtrl'});
+    }, true);
+
+    $rootScope.$watch('user.flags.armoireEmpty', function(after,before){
+      if (before == undefined || after == before || after == false) return;
+      $rootScope.openModal('armoireEmpty');
     });
 
     $rootScope.$watch('user.achievements.rebirths', function(after, before){
       if(after === before) return;
-      $rootScope.openModal('achievements/rebirth');
+      $rootScope.openModal('achievements/rebirth', {controller:'UserCtrl', size: 'sm'});
     });
 
     $rootScope.$watch('user.flags.contributor', function(after, before){
       if (after === before || after !== true) return;
-      $rootScope.openModal('achievements/contributor');
-    });
-
-    /*_.each(['weapon', 'head', 'chest', 'shield'], function(watched){
-      $rootScope.$watch('user.items.' + watched, function(before, after){
-        if (after == before) return;
-        if (+after < +before) {
-          //don't want to day "lost a head"
-          if (watched === 'head') watched = 'helm';
-          Notification.text('Lost GP, 1 LVL, ' + watched);
-        }
-      })
-    });*/
-
-    // Classes modal
-    $rootScope.$watch('!user.flags.classSelected && user.stats.lvl >= 10', function(after, before){
-      if(after){
-        $rootScope.openModal('chooseClass', {controller:'UserCtrl', keyboard:false, backdrop:'static'});
-      }
-    });
-
-    $rootScope.$watch('user.stats.lvl', function(after, before) {
-      if (after == before) return;
-      if (after > before) {
-        Notification.lvl();
-        $rootScope.playSound('Level_Up');
-      }
+      $rootScope.openModal('achievements/contributor',{controller:'UserCtrl'});
     });
 
     // Completed quest modal
-    $rootScope.$watch('user.party.quest.completed', function(after, before){
+    $scope.$watch('user.party.quest.completed', function(after, before){
       if (!after) return;
       $rootScope.openModal('questCompleted', {controller:'InventoryCtrl'});
     });
 
     // Quest invitation modal
-    $rootScope.$watch('party.quest.key && !party.quest.active && party.quest.members[user._id] == undefined', function(after, before){
-      if (after == before || after != true) return;
-      $rootScope.openModal('questInvitation');
+    $scope.$watch('user.party.quest.RSVPNeeded && !user.party.quest.completed', function(after, before){
+      if (after != true) return;
+      $rootScope.openModal('questInvitation', {controller:'PartyCtrl'});
     });
 
     $rootScope.$on('responseError', function(ev, error){

@@ -1,6 +1,6 @@
-habitrpg.controller("InventoryCtrl", 
-  ['$rootScope', '$scope', 'Shared', '$window', 'User', 'Content',
-  function($rootScope, $scope, Shared, $window, User, Content) {
+habitrpg.controller("InventoryCtrl",
+  ['$rootScope', '$scope', 'Shared', '$window', 'User', 'Content', 'Analytics', 'Quests', 'Stats', 'Social',
+  function($rootScope, $scope, Shared, $window, User, Content, Analytics, Quests, Stats, Social) {
 
     var user = User.user;
 
@@ -8,8 +8,41 @@ habitrpg.controller("InventoryCtrl",
 
     $scope.selectedEgg = null; // {index: 1, name: "Tiger", value: 5}
     $scope.selectedPotion = null; // {index: 5, name: "Red", value: 3}
-    $scope.totalPets = _.size(Content.dropEggs) * _.size(Content.hatchingPotions);
-    $scope.totalMounts = _.size(Content.dropEggs) * _.size(Content.hatchingPotions);
+
+    _updateDropAnimalCount(user.items);
+
+    // Social sharing buttons
+    $scope.loadWidgets = Social.loadWidgets;
+
+    // Functions from Quests service
+    $scope.lockQuest = Quests.lockQuest;
+
+    $scope.buyQuest = function(questScroll) {
+      Quests.buyQuest(questScroll)
+        .then(function(quest) {
+          $rootScope.selectedQuest = quest;
+          $rootScope.openModal('buyQuest', {controller:'InventoryCtrl'});
+        });
+    };
+
+    $scope.questPopover = Quests.questPopover;
+
+    $scope.showQuest = function(questScroll) {
+      Quests.showQuest(questScroll)
+        .then(function(quest) {
+          $rootScope.selectedQuest = quest;
+          $rootScope.openModal('showQuest', {controller:'InventoryCtrl'});
+        });
+    };
+
+    $scope.questInit = function() {
+      var key = $rootScope.selectedQuest.key;
+
+      Quests.initQuest(key).then(function() {
+        $rootScope.selectedQuest = undefined;
+        $scope.$close();
+      });
+    };
 
     // count egg, food, hatchingPotion stack totals
     var countStacks = function(items) { return _.reduce(items,function(m,v){return m+v;},0);}
@@ -81,46 +114,44 @@ habitrpg.controller("InventoryCtrl",
       var eggName = Content.eggs[egg.key].text();
       var potName = Content.hatchingPotions[potion.key].text();
       if (!$window.confirm(window.env.t('hatchAPot', {potion: potName, egg: eggName}))) return;
+
+      var userHasPet = user.items.pets[egg.key + '-' + potion.key] > 0;
+      var isPremiumPet = Content.hatchingPotions[potion.key].premium && !Content.dropEggs[egg.key];
+
       user.ops.hatch({params:{egg:egg.key, hatchingPotion:potion.key}});
+
+      if (!user.preferences.suppressModals.hatchPet && !userHasPet && !isPremiumPet) {
+        $scope.hatchedPet = {
+          egg: eggName,
+          potion: potName,
+          potionKey:potion.key,
+          eggKey: egg.key,
+          pet: 'Pet-' + egg.key + '-' + potion.key
+        };
+        $rootScope.openModal('hatchPet', {
+          scope: $scope,
+          size: 'sm'
+        });
+      }
       $scope.selectedEgg = null;
       $scope.selectedPotion = null;
 
-      $rootScope.petCount = Shared.countPets($rootScope.countExists(User.user.items.pets), User.user.items.pets);
+      _updateDropAnimalCount(user.items);
 
       // Checks if beastmaster has been reached for the first time
-      if(!User.user.achievements.beastMaster 
-          && $rootScope.petCount >= 90) {
+      if(!user.achievements.beastMaster
+          && $scope.petCount >= 90) {
         User.user.achievements.beastMaster = true;
-        $rootScope.openModal('achievements/beastMaster');
+        $rootScope.openModal('achievements/beastMaster', {controller:'UserCtrl', size:'sm'});
       }
 
       // Checks if Triad Bingo has been reached for the first time
-      if(!User.user.achievements.triadBingo
-          && $rootScope.mountCount >= 90
-          && Shared.countTriad(User.user.items.pets) >= 90) {
+      if(!user.achievements.triadBingo
+          && $scope.mountCount >= 90
+          && Shared.count.dropPetsCurrentlyOwned(User.user.items.pets) >= 90) {
         User.user.achievements.triadBingo = true;
-        $rootScope.openModal('achievements/triadBingo');
+        $rootScope.openModal('achievements/triadBingo', {controller:'UserCtrl', size:'sm'});
       }
-    }
-
-    $scope.purchase = function(type, item){
-      if (type == 'special') return User.user.ops.buySpecialSpell({params:{key:item.key}});
-
-      var gems = User.user.balance * 4;
-
-      var string = (type == 'weapon') ? window.env.t('weapon') : (type == 'armor') ? window.env.t('armor') : (type == 'head') ? window.env.t('headgear') : (type == 'shield') ? window.env.t('offhand') : (type == 'hatchingPotions') ? window.env.t('hatchingPotion') : (type == 'eggs') ? window.env.t('eggSingular') : (type == 'quests') ? window.env.t('quest') : (item.key == 'Saddle') ? window.env.t('foodSaddleText').toLowerCase() : type; // this is ugly but temporary, once the purchase modal is done this will be removed
-      if (type == 'weapon' || type == 'armor' || type == 'head' || type == 'shield') {
-        if (gems < ((item.specialClass == "wizard") && (item.type == "weapon")) + 1) return $rootScope.openModal('buyGems');
-        var message = window.env.t('buyThis', {text: string, price: ((item.specialClass == "wizard") && (item.type == "weapon")) + 1, gems: gems})
-        if($window.confirm(message))
-          User.user.ops.purchase({params:{type:"gear",key:item.key}});
-      } else {
-        if(gems < item.value) return $rootScope.openModal('buyGems');
-        var message = window.env.t('buyThis', {text: string, price: item.value, gems: gems})
-        if($window.confirm(message))
-          User.user.ops.purchase({params:{type:type,key:item.key}});
-      }
-
     }
 
     $scope.choosePet = function(egg, potion){
@@ -132,22 +163,36 @@ habitrpg.controller("InventoryCtrl",
 
       // Feeding Pet
       if ($scope.selectedFood) {
-        var food = $scope.selectedFood
-        if (food.key == 'Saddle') {
+        var food = $scope.selectedFood;
+        var startingMounts = $rootScope.countExists(user.items.mounts);
+        if (food.key === 'Saddle') {
           if (!$window.confirm(window.env.t('useSaddle', {pet: petDisplayName}))) return;
         } else if (!$window.confirm(window.env.t('feedPet', {name: petDisplayName, article: food.article, text: food.text()}))) {
           return;
         }
         User.user.ops.feed({params:{pet: pet, food: food.key}});
         $scope.selectedFood = null;
-        $rootScope.mountCount = Shared.countMounts($rootScope.countExists(User.user.items.mounts), User.user.items.mounts);
 
-      // Checks if mountmaster has been reached for the first time
-      if(!User.user.achievements.mountMaster 
-          && $rootScope.mountCount >= 90) {
-        User.user.achievements.mountMaster = true;
-        $rootScope.openModal('achievements/mountMaster');
-      }
+        _updateDropAnimalCount(user.items);
+        if ($rootScope.countExists(user.items.mounts) > startingMounts && !user.preferences.suppressModals.raisePet) {
+          $scope.raisedPet = {
+            displayName: petDisplayName,
+            spriteName: pet,
+            egg: egg,
+            potion: potion
+          }
+          $rootScope.openModal('raisePet', {
+            scope: $scope,
+            size:'sm'
+          });
+        }
+
+        // Checks if mountmaster has been reached for the first time
+        if(!user.achievements.mountMaster
+            && $scope.mountCount >= 90) {
+          User.user.achievements.mountMaster = true;
+          $rootScope.openModal('achievements/mountMaster', {controller:'UserCtrl', size:'sm'});
+        }
 
       // Selecting Pet
       } else {
@@ -159,79 +204,126 @@ habitrpg.controller("InventoryCtrl",
       User.user.ops.equip({params:{type: 'mount', key: egg + '-' + potion}});
     }
 
-    $scope.questPopover = function(quest) {
-      // The popover gets parsed as markdown (hence the double \n for line breaks
-      var text = '';
-      if(quest.boss) {
-        text += '**' + window.env.t('bossHP') + ':** ' + quest.boss.hp + '\n\n';
-        text += '**' + window.env.t('bossStrength') + ':** ' + quest.boss.str + '\n\n';
-      } else if(quest.collect) {
-        var count = 0;
-        for (var key in quest.collect) {
-          text += '**' + window.env.t('collect') + ':** ' + quest.collect[key].count + ' ' + quest.collect[key].text() + '\n\n';
-        }
-      }
-      text += '---\n\n';
-      text += '**' + window.env.t('rewards') + ':**\n\n';
-      if(quest.drop.items) {
-        for (var item in quest.drop.items) {
-          text += quest.drop.items[item].text() + '\n\n';
-        }
-      }
-      if(quest.drop.exp)
-        text += quest.drop.exp + ' ' + window.env.t('experience') + '\n\n';
-      if(quest.drop.gp)
-        text += quest.drop.gp + ' ' + window.env.t('gold') + '\n\n';
-
-      return text;
-    }
-
-    $scope.showQuest = function(quest) {
-      var item =  Content.quests[quest];
-      var completedPrevious = !item.previous || (User.user.achievements.quests && User.user.achievements.quests[item.previous]);
-      if (!completedPrevious)
-        return alert(window.env.t('mustComplete', {quest: $rootScope.Content.quests[item.previous].text()}));
-      if (item.lvl && item.lvl > user.stats.lvl)
-        return alert(window.env.t('mustLevel', {level: item.lvl}));
-      $rootScope.selectedQuest = item;
-      $rootScope.openModal('showQuest', {controller:'InventoryCtrl'});
-    }
-    $scope.closeQuest = function(){
-      $rootScope.selectedQuest = undefined;
-    }
-    $scope.questInit = function(){
-      $rootScope.party.$questAccept({key:$scope.selectedQuest.key}, function(){
-        $rootScope.party.$get();
-      });
-      $scope.closeQuest();
-    }
-    $scope.buyQuest = function(quest) {
-      var item = Content.quests[quest];
-      if (item.lvl && item.lvl > user.stats.lvl)
-          return alert(window.env.t('mustLvlQuest', {level: item.lvl}));
-      var completedPrevious = !item.previous || (User.user.achievements.quests && User.user.achievements.quests[item.previous]);
-      if (!completedPrevious)
-        return $scope.purchase("quests", item);
-      $rootScope.selectedQuest = item;
-      $rootScope.openModal('buyQuest', {controller:'InventoryCtrl'});
-    }
-    
     $scope.getSeasonalShopArray = function(set){
       var flatGearArray = _.toArray(Content.gear.flat);
-      
+
       var filteredArray = _.where(flatGearArray, {index: set});
 
       return filteredArray;
     };
-    
+
     $scope.getSeasonalShopQuests = function(set){
       var questArray = _.toArray(Content.quests);
-      
+
       var filteredArray = _.filter(questArray, function(q){
-        return q.key == "evilsanta" || q.key == "evilsanta2";
+        return q.key.indexOf('evilsanta') !== -1;
       });
 
       return filteredArray;
     };
+
+    $scope.dequip = function(itemSet){
+      switch (itemSet) {
+        case "battleGear":
+          for (item in user.items.gear.equipped){
+            var itemKey = user.items.gear.equipped[item];
+            if (user.items.gear.owned[itemKey]) {
+              user.ops.equip({params: {key: itemKey}});
+            }
+          }
+          break;
+
+        case "costume":
+          for (item in user.items.gear.costume){
+            var itemKey = user.items.gear.costume[item];
+            if (user.items.gear.owned[itemKey]) {
+              user.ops.equip({params: {type:"costume", key: itemKey}});
+            }
+          }
+          break;
+
+        case "petMountBackground":
+          var pet = user.items.currentPet;
+          if (pet) {
+            user.ops.equip({params:{type: 'pet', key: pet}});
+          }
+
+          var mount = user.items.currentMount;
+          if (mount) {
+            user.ops.equip({params:{type: 'mount', key: mount}});
+          }
+
+          var background = user.preferences.background;
+          if (background) {
+            User.user.ops.unlock({query:{path:"background."+background}});
+          }
+
+          break;
+      }
+    };
+
+    $scope.$on("habit:keydown", function (e, keyEvent) {
+      if (keyEvent.keyCode == "27") {
+        $scope.deselectItem();
+      }
+    });
+
+    $scope.deselectItem = function() {
+      $scope.selectedFood = null;
+      $scope.selectedPotion = null;
+      $scope.selectedEgg = null;
+    };
+
+    $scope.openCardsModal = function(type, numberOfVariations) {
+      var cardsModalScope = $rootScope.$new();
+      cardsModalScope.cardType = type;
+      cardsModalScope.cardMessage = _generateCard(type, numberOfVariations);
+
+      $rootScope.openModal('cards', {
+        scope: cardsModalScope
+      });
+    };
+
+    $scope.hasAllTimeTravelerItems = function() {
+      return ($scope.hasAllTimeTravelerItemsOfType('mystery') &&
+        $scope.hasAllTimeTravelerItemsOfType('pets') &&
+        $scope.hasAllTimeTravelerItemsOfType('mounts'));
+    };
+
+    $scope.hasAllTimeTravelerItemsOfType = function(type) {
+      if (type === 'mystery') {
+        var itemsLeftInTimeTravelerStore = Content.timeTravelerStore(user.items.gear.owned);
+        var keys = Object.keys(itemsLeftInTimeTravelerStore);
+
+        return keys.length === 0;
+      }
+
+      if (type === 'pets' || type === 'mounts') {
+        for (var key in Content.timeTravelStable[type]) {
+          if (!user.items[type][key]) return false;
+        }
+        return true;
+      }
+      else return Console.log('Time Traveler item type must be in ["pets","mounts","mystery"]');
+    };
+
+    $scope.clickTimeTravelItem = function(type,key) {
+      if (user.purchased.plan.consecutive.trinkets < 1) return user.ops.hourglassPurchase({params:{type:type,key:key}});
+      if (!window.confirm(window.env.t('hourglassBuyItemConfirm'))) return;
+      user.ops.hourglassPurchase({params:{type:type,key:key}});
+    };
+
+    function _updateDropAnimalCount(items) {
+      $scope.petCount = Shared.count.beastMasterProgress(items.pets);
+      $scope.mountCount = Shared.count.mountMasterProgress(items.mounts);
+      $scope.beastMasterProgress = Stats.beastMasterProgress(items.pets);
+      $scope.mountMasterProgress = Stats.mountMasterProgress(items.mounts);
+    }
+
+    function _generateCard(kind, numberOfVariations) {
+      var random = Math.random() * numberOfVariations;
+      var selection = Math.floor(random);
+      return env.t(kind + selection);
+    }
   }
 ]);

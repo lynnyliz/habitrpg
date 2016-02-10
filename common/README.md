@@ -1,6 +1,6 @@
 # Common
 
-Shared resources useful for the multiple HabitRPG repositories, that way all the repositories remain in-sync with common characteristics. Includes things like:
+Shared resources useful for the multiple Habitica repositories, that way all the repositories remain in-sync with common characteristics. Includes things like:
 
  * Assets - sprites, images, etc
  * CSS - especially, esp. sprite-sheet mapping
@@ -12,5 +12,5 @@ Shared resources useful for the multiple HabitRPG repositories, that way all the
 Because of some wonkiness with Heroku, the spritesheet compilation is not part of the production build process and must be done manually when new images are added by running: 
 
 ``` bash
-grunt compile:sprites
+npm run sprites
 ```
