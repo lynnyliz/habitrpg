@@ -1,11 +1,11 @@
 var nconf = require('nconf');
 var express = require('express');
-var router = new express.Router();
+var router = express.Router();
 var _ = require('lodash');
 var locals = require('../middlewares/locals');
 var i18n = require('../libs/i18n');
 
-const TOTAL_USER_COUNT = '1,000,000';
+const TOTAL_USER_COUNT = '1,100,000';
 
 // -------- App --------
 router.get('/', i18n.getUserLanguage, locals, function(req, res) {

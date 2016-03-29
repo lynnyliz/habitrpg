@@ -116,6 +116,8 @@
     "audioTheme_luneFoxTheme": "Motyw dźwiękowy LuneFoxa",
     "askQuestion": "Zadaj pytanie",
     "reportBug": "Zgłoś błąd",
+    "HabiticaWiki": "Wiki Habitiki",
+    "HabiticaWikiFrontPage": "http://habitica.wikia.com/wiki/Habitica_Wiki",
     "contributeToHRPG": "Wspomóż Habitica",
     "overview": "Zarys dla nowych użytkowników",
     "January": "Styczeń",
@@ -126,7 +128,7 @@
     "June": "Czerwiec",
     "July": "Lipiec",
     "August": "Sierpień",
-    "September": "Wrześcień",
+    "September": "Wrzesień",
     "October": "Październik",
     "November": "Listopad",
     "December": "Grudzień",
@@ -156,6 +158,12 @@
     "thankyou3": "Jestem bardzo wdzięczny - dziękuję!",
     "thankyouCardAchievementTitle": "Ogromnie wdzięczny",
     "thankyouCardAchievementText": "Dzięki za bycie wdzięcznym! Wysłał lub otrzymał <%= cards %> kartek z podziękowaniem.",
+    "birthdayCard": "Kartka urodzinowa",
+    "birthdayCardExplanation": "Oboje otrzymujecie osiągnięcie Urodzinowe źródło pomyślności!",
+    "birthdayCardNotes": "Wyślij kartkę urodzinową do członka drużyny.",
+    "birthday0": "Wszystkiego najlepszego z okazji urodzin!",
+    "birthdayCardAchievementTitle": "Urodzinowe źródło pomyślności",
+    "birthdayCardAchievementText": "I jeszcze jeden, i jeszcze raz! Wysłano lub otrzymano <%= cards %> kartek urodzinowych.",
     "streakAchievement": "Zdobyłeś osiągnięcie serii!",
     "firstStreakAchievement": "21-dniowa seria",
     "streakAchievementCount": "<%= streaks %> 21-dniowych serii",
@@ -167,5 +175,6 @@
     "hatchPetShare": "Mam nowego chowańca dzięki ukończeniu moich zadań w prawdziwym życiu!",
     "raisePetShare": "Mam nowego wierzchowca dzięki ukończeniu moich zadań w prawdziwym życiu!",
     "wonChallengeShare": "Wyzwanie zaliczone!",
-    "achievementShare": "Zdobyto nowe osiągnięcie w Habitice!"
+    "achievementShare": "Zdobyto nowe osiągnięcie w Habitice!",
+    "orderBy": "Sortuj po <%= item %>"
 }

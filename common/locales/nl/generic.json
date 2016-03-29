@@ -116,6 +116,8 @@
     "audioTheme_luneFoxTheme": "Achtergrondmuziek van LuneFox",
     "askQuestion": "Vraag stellen",
     "reportBug": "Fout melden",
+    "HabiticaWiki": "De Wiki van Habitica",
+    "HabiticaWikiFrontPage": "http://habitica.wikia.com/wiki/Habitica_Wiki",
     "contributeToHRPG": "Bijdragen aan Habitica",
     "overview": "Overzicht voor nieuwe gebruikers",
     "January": "Januari",
@@ -156,6 +158,12 @@
     "thankyou3": "Ik ben je heel dankbaar - dankjewel!",
     "thankyouCardAchievementTitle": "Duizendmaal Dank",
     "thankyouCardAchievementText": "Bedankt voor het dankbaar zijn! Je hebt <%= cards %> bedankkaartjes verstuurd of ontvangen.",
+    "birthdayCard": "Verjaardagskaartje",
+    "birthdayCardExplanation": "Jullie ontvangen allebei de Voorspoedige Verjaardag-prestatie!",
+    "birthdayCardNotes": "Stuur een verjaardagskaartje naar een groepslid.",
+    "birthday0": "Van harte gefeliciteerd!",
+    "birthdayCardAchievementTitle": "Voorspoedige Verjaardag",
+    "birthdayCardAchievementText": "Nog vele jaren! Je hebt <%= cards %> verjaardagskaartjes verstuurd of ontvangen.",
     "streakAchievement": "Je hebt een serie prestaties verdiend!",
     "firstStreakAchievement": "Serie van 21 dagen",
     "streakAchievementCount": "<%= streaks %> Series van 21 dagen",
@@ -167,5 +175,6 @@
     "hatchPetShare": "Ik heb een nieuw huisdier uitgebroed door mijn taken uit het echte leven te voltooien!",
     "raisePetShare": "Ik heb een huisdier opgevoed naar een rijdier door mijn taken uit het echte leven te voltooien!",
     "wonChallengeShare": "Ik heb een uitdaging gewonnen in Habitica!",
-    "achievementShare": "Ik heb een nieuwe prestatie behaald in Habitica!"
+    "achievementShare": "Ik heb een nieuwe prestatie behaald in Habitica!",
+    "orderBy": "Order per <%= item %>"
 }
