@@ -112,7 +112,6 @@ angular.module('habitrpg')
           $rootScope.$emit('userSynced');
         });
       }
-      sync();
 
       var save = function () {
         localStorage.setItem(STORAGE_USER_ID, JSON.stringify(user));
@@ -225,8 +224,13 @@ angular.module('habitrpg')
 
           Tasks.scoreTask(data.params.task._id, data.params.direction).then(function (res) {
             var tmp = res.data.data._tmp || {}; // used to notify drops, critical hits and other bonuses
+            var crit = tmp.crit;
             var drop = tmp.drop;
 
+            if (crit) {
+              var critBonus = crit * 100 - 100;
+              Notification.crit(critBonus);
+            }
             if (drop) user._tmp.drop = drop;
           });
         },
@@ -353,6 +357,17 @@ angular.module('habitrpg')
 
         buy: function (data) {
           callOpsFunctionAndRequest('buy', 'buy', "POST", data.params.key, data);
+        },
+
+        buyArmoire: function () {
+          $http({
+            method: "POST",
+            url: '/api/v3/user/buy-armoire',
+          })
+          .then(function (response) {
+            Notification.text(response.data.message);
+            sync();
+          })
         },
 
         buyQuest: function (data) {
